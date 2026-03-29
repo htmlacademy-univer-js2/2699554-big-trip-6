@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "copy-webpack-plugin": "^11.0.0",
-    "html-webpack-plugin": "^5.5.1"
+    "html-webpack-plugin": "^5.5.1",
+    "nanoid": "^5.1.7"
   }
 }
