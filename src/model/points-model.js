@@ -1,4 +1,5 @@
 import Observable from '../framework/observable.js';
+import { adaptPointFromServer, adaptPointToServer } from '../utils/adapter.js';
 
 export default class PointsModel extends Observable {
   #points = [];
@@ -35,15 +36,16 @@ export default class PointsModel extends Observable {
 
   async init() {
     try {
-      const [points, destinations, offers] = await Promise.all([
+      const [serverPoints, destinations, offers] = await Promise.all([
         this.#apiService.getPoints(),
         this.#apiService.getDestinations(),
         this.#apiService.getOffers()
       ]);
 
-      this.#points = points;
-      this.#destinations = destinations;
-      this.#offers = offers;
+      // Преобразуем точки из серверного формата в клиентский
+      this.#points = serverPoints.map(adaptPointFromServer);
+      this.#destinations = destinations;   // структура не требует адаптации
+      this.#offers = offers;               // структура не требует адаптации
       this.#isLoading = false;
     } catch {
       this.#isLoading = false;
@@ -68,32 +70,41 @@ export default class PointsModel extends Observable {
   }
 
   async updatePoint(update) {
+    // update уже в клиентском формате, преобразуем для отправки
+    const serverPoint = adaptPointToServer(update);
+
     try {
-      const updatedPoint = await this.#apiService.updatePoint(update);
-      const index = this.#points.findIndex((point) => point.id === updatedPoint.id);
+      const updatedServerPoint = await this.#apiService.updatePoint(serverPoint);
+      const updatedClientPoint = adaptPointFromServer(updatedServerPoint);
+
+      const index = this.#points.findIndex((point) => point.id === updatedClientPoint.id);
       if (index === -1) {
         throw new Error('Point not found');
       }
 
       this.#points = [
         ...this.#points.slice(0, index),
-        updatedPoint,
+        updatedClientPoint,
         ...this.#points.slice(index + 1)
       ];
 
-      this._notify('UPDATE', updatedPoint);
-      return updatedPoint;
+      this._notify('UPDATE', updatedClientPoint);
+      return updatedClientPoint;
     } catch (err) {
       throw err;
     }
   }
 
   async addPoint(point) {
+    const serverPoint = adaptPointToServer(point);
+
     try {
-      const newPoint = await this.#apiService.addPoint(point);
-      this.#points = [newPoint, ...this.#points];
-      this._notify('ADD', newPoint);
-      return newPoint;
+      const newServerPoint = await this.#apiService.addPoint(serverPoint);
+      const newClientPoint = adaptPointFromServer(newServerPoint);
+
+      this.#points = [newClientPoint, ...this.#points];
+      this._notify('ADD', newClientPoint);
+      return newClientPoint;
     } catch (err) {
       throw err;
     }

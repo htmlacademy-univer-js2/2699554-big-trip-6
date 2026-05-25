@@ -16,6 +16,7 @@ const boardPresenter = new BoardPresenter({
   newEventButton
 });
 
+// Инициализируем модель (загрузка данных с сервера), затем — презентер
 pointsModel.init().finally(() => {
   boardPresenter.init();
 });
