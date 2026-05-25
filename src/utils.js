@@ -1,102 +1,47 @@
 import dayjs from 'dayjs';
-import duration from 'dayjs/plugin/duration';
-import relativeTime from 'dayjs/plugin/relativeTime';
-import { DateFormat } from './const.js';
-
+import duration from 'dayjs/plugin/duration.js';
 
 dayjs.extend(duration);
-dayjs.extend(relativeTime);
 
-const getDurationEvent = (dateFrom, dateTo) =>
-  dayjs(dateTo).diff(dayjs(dateFrom));
+function getRandomInteger(min, max) {
+  const lower = Math.ceil(Math.min(min, max));
+  const upper = Math.floor(Math.max(min, max));
+  return Math.floor(Math.random() * (upper - lower + 1) + lower);
+}
 
-const humanizeDateCalendarFormat = (date) =>
-  date ? dayjs(date).format(DateFormat.EVENT_TEMPLATE) : '';
+function getRandomArrayElement(items) {
+  return items[getRandomInteger(0, items.length - 1)];
+}
 
-const humanizeDateFormat = (
-  date,
-  template = DateFormat.INVERTED_SHORT_TEMPLATE
-) => (date ? dayjs(date).format(template) : '');
+function generateId() {
+  return crypto.randomUUID();
+}
 
-const humanizeDurationEvent = (dateFrom, dateTo) => {
-  const diffTimestamp = getDurationEvent(dateFrom, dateTo);
-  const eventDuration = dayjs.duration(diffTimestamp);
-  const days = Math.floor(eventDuration.asDays());
-  const hours = eventDuration.hours();
-  const minutes = eventDuration.minutes();
+function humanizeDate(date, format) {
+  return date ? dayjs(date).format(format) : '';
+}
 
-  const getFromScratch = (value) => value.toString().padStart(2, '0');
+function formatDuration(dateFrom, dateTo) {
+  const diff = dayjs(dateTo).diff(dayjs(dateFrom));
+  const durationObj = dayjs.duration(diff);
 
-  let daysFormat = '';
-  let hoursFormat = '';
-  let minutesFormat = '';
+  const days = Math.floor(durationObj.asDays());
+  const hours = durationObj.hours();
+  const minutes = durationObj.minutes();
 
-  if (days) {
-    daysFormat = days < 10 ? `0${days}D ` : `${days}D `;
-    hoursFormat = '00H ';
-    minutesFormat = '00M';
+  if (days > 0) {
+    return `${String(days).padStart(2, '0')}D ${String(hours).padStart(2, '0')}H ${String(minutes).padStart(2, '0')}M`;
   }
 
-  if (hours) {
-    hoursFormat = getFromScratch(hours).concat('H ');
-    minutesFormat = '00M';
+  if (hours > 0) {
+    return `${String(hours).padStart(2, '0')}H ${String(minutes).padStart(2, '0')}M`;
   }
 
-  if (minutes) {
-    minutesFormat = getFromScratch(minutes).concat('M');
-  }
+  return `${String(minutes).padStart(2, '0')}M`;
+}
 
-  return daysFormat + hoursFormat + minutesFormat;
-};
+function capitalizeFirstLetter(string) {
+  return string.charAt(0).toUpperCase() + string.slice(1);
+}
 
-const shuffle = (items) => {
-  const mixedItems = [...items];
-
-  for (let i = mixedItems.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [mixedItems[i], mixedItems[j]] = [mixedItems[j], mixedItems[i]];
-  }
-
-  return mixedItems;
-};
-
-const getUppercaseFirstLetter = (word) =>
-  word.at(0).toUpperCase() + word.slice(1);
-
-const getLastWord = (value) => {
-  const words = value.split(/[\s,]+/);
-  return words[words.length - 1];
-};
-
-const getDestinationById = ({ destinations, destinationId }) =>
-  destinations.find((destination) => destination.id === destinationId);
-
-const getDestinationListNames = (destinations) =>
-  destinations.map(({ name }) => name);
-
-const getOffersByType = ({ type, offers }) =>
-  offers.find((offer) => offer.type === type).offers;
-
-const getSelectedOffersByType = ({ point, offers }) => {
-  const { type, offers: selectedOffers } = point;
-  const availableOffers = getOffersByType({ type, offers });
-
-  if (!availableOffers.length || !selectedOffers.length) {
-    return [];
-  }
-
-  return availableOffers.filter((offer) => selectedOffers.includes(offer.id));
-};
-
-export {
-  humanizeDateCalendarFormat,
-  humanizeDateFormat,
-  humanizeDurationEvent,
-  shuffle,
-  getDestinationById,
-  getOffersByType,
-  getSelectedOffersByType,
-  getUppercaseFirstLetter,
-  getDestinationListNames,
-  getLastWord,
-};
+export { getRandomInteger, getRandomArrayElement, generateId, humanizeDate, formatDuration, capitalizeFirstLetter };

@@ -1,71 +1,32 @@
-const POINT_COUNT = 5;
+const POINT_TYPES = ['taxi', 'bus', 'train', 'ship', 'drive', 'flight', 'check-in', 'sightseeing', 'restaurant'];
 
-const DateFormat = {
-  TIME_TEMPLATE: 'HH:mm',
-  EVENT_TEMPLATE: 'DD/MM/YY HH:mm',
-  INVERTED_SHORT_TEMPLATE: 'MMM DD',
-  AVERAGE_EVENT_DURATION_TEMPLATE: 'HH[H] mm[M]',
-  SHORT_EVENT_DURATION_TEMPLATE: 'mm[M]',
-  LONG_EVENT_DURATION_TEMPLATE: 'DD[D] HH[H] mm[M]',
-  MACHINE_TEMPLATE: 'YYYY-MM-DD',
-  FULL_MACHINE_TEMPLATE: 'YYYY-MM-DD[T]HH:mm',
-};
+const CITIES = ['Amsterdam', 'Geneva', 'Chamonix', 'Paris', 'Rome', 'Barcelona', 'Vienna', 'Prague'];
 
-const PointType = {
-  TAXI: 'taxi',
-  BUS: 'bus',
-  TRAIN: 'train',
-  SHIP: 'ship',
-  DRIVE: 'drive',
-  FLIGHT: 'flight',
-  CHECK: 'check-in',
-  SIGHTSEEING: 'sightseeing',
-  RESTAURANT: 'restaurant',
-};
-
-const DEFAULT_POINT_TYPE = PointType.FLIGHT;
+const DESCRIPTIONS = [
+  'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
+  'Cras aliquet varius magna, non porta ligula feugiat eget.',
+  'Fusce tristique felis at fermentum pharetra.',
+  'Aliquam id orci ut lectus varius viverra.',
+  'Nullam nunc ex, convallis sed finibus eget, sollicitudin eget ante.',
+  'Phasellus eros mauris, condimentum sed nibh vitae, sodales efficitur ipsum.',
+  'Sed blandit, eros vel aliquam faucibus, purus ex euismod diam, eu luctus nunc ante ut dui.',
+  'Sed sed nisi sed augue convallis suscipit in sed felis.',
+  'Aliquam erat volutpat.',
+  'Nunc fermentum tortor ac porta dapibus.',
+  'In rutrum ac purus sit amet tempus.'
+];
 
 const FilterType = {
   EVERYTHING: 'everything',
   FUTURE: 'future',
   PRESENT: 'present',
-  PAST: 'past',
+  PAST: 'past'
 };
-
-const DEFAULT_FILTER_TYPE = FilterType.EVERYTHING;
 
 const SortType = {
   DAY: 'day',
-  EVENT: 'event',
   TIME: 'time',
-  PRICE: 'price',
-  OFFERS: 'offers',
+  PRICE: 'price'
 };
 
-const DEFAULT_SORTING_TYPE = SortType.DAY;
-
-const ACCEPTABLE_SORTING = [SortType.DAY, SortType.TIME, SortType.PRICE];
-
-const BLANK_POINT = {
-  id: '',
-  basePrice: 0,
-  dateFrom: '',
-  dateTo: '',
-  destination: '',
-  isFavorite: false,
-  offers: [],
-  type: DEFAULT_POINT_TYPE,
-};
-
-export {
-  POINT_COUNT,
-  DateFormat,
-  PointType,
-  DEFAULT_POINT_TYPE,
-  FilterType,
-  DEFAULT_FILTER_TYPE,
-  SortType,
-  DEFAULT_SORTING_TYPE,
-  ACCEPTABLE_SORTING,
-  BLANK_POINT,
-};
+export { POINT_TYPES, CITIES, DESCRIPTIONS, FilterType, SortType };
