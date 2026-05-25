@@ -1,4 +1,4 @@
-import AbstractView from '../framework/view/abstract-view.js';
+import AbstractStatefulView from '../framework/view/abstract-stateful-view.js';
 import { POINT_TYPES } from '../const.js';
 import { humanizeDate, capitalizeFirstLetter } from '../utils.js';
 import flatpickr from 'flatpickr';
@@ -192,11 +192,7 @@ function createEditFormTemplate(point, destination, offers, allDestinations, isN
   `;
 }
 
-export default class EditFormView extends AbstractView {
-  #point = null;
-  #destination = null;
-  #offers = null;
-  #allDestinations = null;
+export default class EditFormView extends AbstractStatefulView {
   #isNewPoint = false;
   #handleSubmit = null;
   #handleRollupClick = null;
@@ -204,19 +200,23 @@ export default class EditFormView extends AbstractView {
   #datepickerFrom = null;
   #datepickerTo = null;
 
-  constructor({ point = null, destination = null, offers = [], allDestinations = [], isNewPoint = false, onSubmit, onRollupClick, onDeleteClick } = {}) {
+  constructor({ point, destination, offers, allDestinations, isNewPoint = false, onSubmit, onRollupClick, onDeleteClick } = {}) {
     super();
-    this.#point = point || this.#getEmptyPoint();
-    this.#destination = destination;
-    this.#offers = offers;
-    this.#allDestinations = allDestinations;
     this.#isNewPoint = isNewPoint;
     this.#handleSubmit = onSubmit;
     this.#handleRollupClick = onRollupClick;
     this.#handleDeleteClick = onDeleteClick;
 
-    this.#initDatepickers();
-    this.#addEventListeners();
+    this._setState({
+      point: point || this.#getEmptyPoint(),
+      destination,
+      offers,
+      allDestinations,
+      isSaving: false,
+      isDeleting: false,
+    });
+
+    this._restoreHandlers();
   }
 
   #getEmptyPoint() {
@@ -233,16 +233,25 @@ export default class EditFormView extends AbstractView {
   }
 
   get template() {
-    return createEditFormTemplate(
-      this.#point,
-      this.#destination,
-      this.#offers,
-      this.#allDestinations,
-      this.#isNewPoint
-    );
+    const { point, destination, offers, allDestinations } = this._state;
+    return createEditFormTemplate(point, destination, offers, allDestinations, this.#isNewPoint);
+  }
+
+  _restoreHandlers() {
+    this.#initDatepickers();
+    this.#addEventListeners();
   }
 
   #initDatepickers() {
+    if (this.#datepickerFrom) {
+      this.#datepickerFrom.destroy();
+      this.#datepickerFrom = null;
+    }
+    if (this.#datepickerTo) {
+      this.#datepickerTo.destroy();
+      this.#datepickerTo = null;
+    }
+
     const startTimeInput = this.element.querySelector('[name="event-start-time"]');
     const endTimeInput = this.element.querySelector('[name="event-end-time"]');
 
@@ -300,7 +309,7 @@ export default class EditFormView extends AbstractView {
     const formData = new FormData(evt.target);
     const type = formData.get('event-type');
     const destinationName = formData.get('event-destination');
-    const destination = this.#allDestinations.find((d) => d.name === destinationName);
+    const destination = this._state.allDestinations.find((d) => d.name === destinationName);
     const startTimeStr = formData.get('event-start-time');
     const endTimeStr = formData.get('event-end-time');
     const price = parseInt(formData.get('event-price'), 10);
@@ -314,14 +323,14 @@ export default class EditFormView extends AbstractView {
     });
 
     const updatedPoint = {
-      id: this.#point.id,
+      id: this._state.point.id,
       type,
       destination: destination ? destination.id : null,
       dateFrom: this.#parseDateTime(startTimeStr),
       dateTo: this.#parseDateTime(endTimeStr),
       basePrice: isNaN(price) ? 0 : price,
       offers: selectedOfferIds,
-      isFavorite: this.#point.isFavorite
+      isFavorite: this._state.point.isFavorite
     };
 
     this.#handleSubmit(updatedPoint);
@@ -329,7 +338,8 @@ export default class EditFormView extends AbstractView {
 
   #parseDateTime(dateTimeStr) {
     if (!dateTimeStr) return '';
-    const [day, month, year, hours, minutes] = dateTimeStr.split(/[\/\s:]/);
+    const [day, month, yearShort, hours, minutes] = dateTimeStr.split(/[\/\s:]/);
+    const year = `20${yearShort}`;
     const isoString = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
     return isoString;
   }
@@ -344,20 +354,20 @@ export default class EditFormView extends AbstractView {
     if (this.#isNewPoint) {
       this.#handleDeleteClick();
     } else {
-      this.#handleDeleteClick(this.#point.id);
+      this.#handleDeleteClick(this._state.point.id);
     }
   };
 
   #typeChangeHandler = (evt) => {
     const newType = evt.target.value;
-    this.#point.type = newType;
-    this.updateElement({ type: newType });
+    this._state.point.type = newType;
+    this.updateElement(); // перерисовка с новым типом
   };
 
   #destinationChangeHandler = (evt) => {
     const destinationName = evt.target.value;
-    const destination = this.#allDestinations.find((d) => d.name === destinationName);
-    this.#destination = destination;
-    this.updateElement({});
+    const destination = this._state.allDestinations.find((d) => d.name === destinationName);
+    this._state.destination = destination;
+    this.updateElement();
   };
 }

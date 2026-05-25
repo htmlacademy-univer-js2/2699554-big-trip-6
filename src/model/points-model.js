@@ -1,12 +1,17 @@
 import Observable from '../framework/observable.js';
-import { mockPoints } from '../mock/points.js';
-import { mockDestinations } from '../mock/destinations.js';
-import { mockOffers } from '../mock/offers.js';
 
 export default class PointsModel extends Observable {
-  #points = mockPoints;
-  #destinations = mockDestinations;
-  #offers = mockOffers;
+  #points = [];
+  #destinations = [];
+  #offers = [];
+  #apiService = null;
+  #isLoading = true;
+  #isError = false;
+
+  constructor(apiService) {
+    super();
+    this.#apiService = apiService;
+  }
 
   get points() {
     return this.#points;
@@ -18,6 +23,34 @@ export default class PointsModel extends Observable {
 
   get offers() {
     return this.#offers;
+  }
+
+  get isLoading() {
+    return this.#isLoading;
+  }
+
+  get isError() {
+    return this.#isError;
+  }
+
+  async init() {
+    try {
+      const [points, destinations, offers] = await Promise.all([
+        this.#apiService.getPoints(),
+        this.#apiService.getDestinations(),
+        this.#apiService.getOffers()
+      ]);
+
+      this.#points = points;
+      this.#destinations = destinations;
+      this.#offers = offers;
+      this.#isLoading = false;
+    } catch {
+      this.#isLoading = false;
+      this.#isError = true;
+    }
+
+    this._notify('INIT');
   }
 
   getDestinationById(id) {
@@ -34,39 +67,45 @@ export default class PointsModel extends Observable {
     return typeOffers.filter((offer) => offerIds.includes(offer.id));
   }
 
-  updatePoint(update) {
-    const index = this.#points.findIndex((point) => point.id === update.id);
-    if (index === -1) {
-      return false;
+  async updatePoint(update) {
+    try {
+      const updatedPoint = await this.#apiService.updatePoint(update);
+      const index = this.#points.findIndex((point) => point.id === updatedPoint.id);
+      if (index === -1) {
+        throw new Error('Point not found');
+      }
+
+      this.#points = [
+        ...this.#points.slice(0, index),
+        updatedPoint,
+        ...this.#points.slice(index + 1)
+      ];
+
+      this._notify('UPDATE', updatedPoint);
+      return updatedPoint;
+    } catch (err) {
+      throw err;
     }
-
-    this.#points = [
-      ...this.#points.slice(0, index),
-      update,
-      ...this.#points.slice(index + 1)
-    ];
-
-    this._notify('UPDATE', update);
-    return true;
   }
 
-  addPoint(point) {
-    this.#points = [point, ...this.#points];
-    this._notify('ADD', point);
+  async addPoint(point) {
+    try {
+      const newPoint = await this.#apiService.addPoint(point);
+      this.#points = [newPoint, ...this.#points];
+      this._notify('ADD', newPoint);
+      return newPoint;
+    } catch (err) {
+      throw err;
+    }
   }
 
-  deletePoint(id) {
-    const index = this.#points.findIndex((point) => point.id === id);
-    if (index === -1) {
-      return false;
+  async deletePoint(id) {
+    try {
+      await this.#apiService.deletePoint(id);
+      this.#points = this.#points.filter((point) => point.id !== id);
+      this._notify('DELETE', id);
+    } catch (err) {
+      throw err;
     }
-
-    this.#points = [
-      ...this.#points.slice(0, index),
-      ...this.#points.slice(index + 1)
-    ];
-
-    this._notify('DELETE', id);
-    return true;
   }
 }

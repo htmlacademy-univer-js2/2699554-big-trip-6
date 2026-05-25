@@ -4,12 +4,19 @@ import ErrorView from '../view/error-view.js';
 import FiltersView from '../view/filters-view.js';
 import ListView from '../view/list-view.js';
 import LoadingView from '../view/loading-view.js';
-import RoutePointView from '../view/route-point-view.js';
 import SortView from '../view/sort-view.js';
+import PointPresenter from './point-presenter.js';
+import TripInfoPresenter from './trip-info-presenter.js';
 import { render, replace, remove, RenderPosition } from '../framework/render.js';
 import { FilterType, SortType } from '../const.js';
 import { generateId } from '../utils.js';
 import dayjs from 'dayjs';
+import UiBlocker from '../framework/ui-blocker/ui-blocker.js';
+
+const TimeLimit = {
+  LOWER_LIMIT: 350,
+  UPPER_LIMIT: 1000,
+};
 
 export default class BoardPresenter {
   #siteHeaderElement = null;
@@ -27,41 +34,50 @@ export default class BoardPresenter {
   #loadingComponent = null;
   #errorComponent = null;
 
-  #isLoading = false;
-  #isError = false;
+  #pointPresenters = new Map();
+  #currentEditForm = null; // для новой точки
+  #tripInfoPresenter = null;
 
-  #currentEditForm = null;
+  #uiBlocker = new UiBlocker(TimeLimit);
 
   constructor({ siteHeaderElement, tripEventsElement, pointsModel, newEventButton }) {
     this.#siteHeaderElement = siteHeaderElement;
     this.#tripEventsElement = tripEventsElement;
     this.#pointsModel = pointsModel;
     this.#newEventButton = newEventButton;
+
+    const tripInfoContainer = this.#siteHeaderElement.querySelector('.trip-main__trip-info');
+    this.#tripInfoPresenter = new TripInfoPresenter({ container: tripInfoContainer, pointsModel: this.#pointsModel });
   }
 
   init() {
     this.#pointsModel.addObserver(this.#handleModelEvent);
-    this.#renderBoard();
     this.#newEventButton.addEventListener('click', this.#handleNewEventClick);
+
+    this.#tripInfoPresenter.init();
+
+    if (this.#pointsModel.isLoading || this.#pointsModel.isError) {
+      this.#renderBoard();
+    }
   }
 
   #renderBoard() {
-    const filteredPoints = this.#getFilteredPoints();
-    const sortedPoints = this.#getSortedPoints(filteredPoints);
-
-    this.#tripEventsElement.innerHTML = '';
-
-    this.#renderFilters();
-
-    if (this.#isLoading) {
+    if (this.#pointsModel.isLoading) {
       this.#renderLoadingMessage();
       return;
     }
 
-    if (this.#isError) {
+    if (this.#pointsModel.isError) {
       this.#renderErrorMessage();
       return;
     }
+
+    const filteredPoints = this.#getFilteredPoints();
+    const sortedPoints = this.#getSortedPoints(filteredPoints);
+
+    this.#clearBoard();
+
+    this.#renderFilters();
 
     if (sortedPoints.length === 0) {
       this.#renderEmptyList();
@@ -71,9 +87,14 @@ export default class BoardPresenter {
     this.#renderSort();
     render(this.#listComponent, this.#tripEventsElement);
 
-    for (const point of sortedPoints) {
-      this.#renderPoint(point);
-    }
+    sortedPoints.forEach((point) => this.#renderPoint(point));
+  }
+
+  #clearBoard() {
+    this.#pointPresenters.forEach((presenter) => presenter.destroy());
+    this.#pointPresenters.clear();
+    this.#closeCurrentEditForm();
+    // sort, filters, list оставляем - они перерендерятся или заменятся
   }
 
   #getFilteredPoints() {
@@ -203,56 +224,22 @@ export default class BoardPresenter {
   }
 
   #renderPoint(point) {
-    const destination = this.#pointsModel.getDestinationById(point.destination);
-    const selectedOffers = this.#pointsModel.getSelectedOffers(point.type, point.offers);
-
-    const pointComponent = new RoutePointView({
-      point,
-      destination,
-      selectedOffers,
-      onEditClick: () => {
-        this.#closeCurrentEditForm();
-        this.#renderEditForm(point, pointComponent);
-      },
-      onFavoriteClick: () => {
-        const updatedPoint = { ...point, isFavorite: !point.isFavorite };
-        this.#pointsModel.updatePoint(updatedPoint);
-      }
+    const pointPresenter = new PointPresenter({
+      listElement: this.#listComponent.element,
+      pointsModel: this.#pointsModel,
+      onModeChange: this.#handleViewModeChange
     });
 
-    render(pointComponent, this.#listComponent.element);
+    pointPresenter.init(point);
+    this.#pointPresenters.set(point.id, pointPresenter);
   }
 
-  #renderEditForm(point, pointComponent) {
-    const destination = this.#pointsModel.getDestinationById(point.destination);
-    const typeOffers = this.#pointsModel.getOffersByType(point.type);
-    const allDestinations = this.#pointsModel.destinations;
+  #handleViewModeChange = () => {
+    this.#pointPresenters.forEach((presenter) => presenter.resetView());
+    this.#closeCurrentEditForm();
+  };
 
-    const editFormComponent = new EditFormView({
-      point,
-      destination,
-      offers: typeOffers,
-      allDestinations,
-      onSubmit: (updatedPoint) => {
-        this.#pointsModel.updatePoint(updatedPoint);
-        this.#closeCurrentEditForm();
-      },
-      onRollupClick: () => {
-        this.#closeCurrentEditForm();
-      },
-      onDeleteClick: (pointId) => {
-        this.#pointsModel.deletePoint(pointId);
-        this.#closeCurrentEditForm();
-      }
-    });
-
-    replace(editFormComponent, pointComponent);
-    this.#currentEditForm = editFormComponent;
-
-    document.addEventListener('keydown', this.#escKeyDownHandler);
-  }
-
-  #renderCreateForm() {
+  #handleNewEventClick = () => {
     if (this.#currentFilter !== FilterType.EVERYTHING || this.#currentSort !== SortType.DAY) {
       this.#currentFilter = FilterType.EVERYTHING;
       this.#currentSort = SortType.DAY;
@@ -260,6 +247,7 @@ export default class BoardPresenter {
     }
 
     this.#closeCurrentEditForm();
+    this.#pointPresenters.forEach((presenter) => presenter.resetView());
 
     const allDestinations = this.#pointsModel.destinations;
     const defaultType = 'flight';
@@ -282,11 +270,7 @@ export default class BoardPresenter {
       offers: typeOffers,
       allDestinations,
       isNewPoint: true,
-      onSubmit: (pointData) => {
-        this.#pointsModel.addPoint(pointData);
-        this.#closeCurrentEditForm();
-        this.#newEventButton.disabled = false;
-      },
+      onSubmit: this.#handleCreateFormSubmit,
       onDeleteClick: () => {
         this.#closeCurrentEditForm();
         this.#newEventButton.disabled = false;
@@ -298,7 +282,20 @@ export default class BoardPresenter {
     this.#newEventButton.disabled = true;
 
     document.addEventListener('keydown', this.#escKeyDownHandler);
-  }
+  };
+
+  #handleCreateFormSubmit = async (pointData) => {
+    this.#uiBlocker.block();
+    try {
+      await this.#pointsModel.addPoint(pointData);
+      this.#closeCurrentEditForm();
+      this.#newEventButton.disabled = false;
+    } catch {
+      this.#currentEditForm.shake();
+    } finally {
+      this.#uiBlocker.unblock();
+    }
+  };
 
   #closeCurrentEditForm() {
     if (this.#currentEditForm) {
@@ -318,11 +315,11 @@ export default class BoardPresenter {
     }
   };
 
-  #handleNewEventClick = () => {
-    this.#renderCreateForm();
-  };
-
-  #handleModelEvent = (event, data) => {
-    this.#renderBoard();
+  #handleModelEvent = (event, payload) => {
+    // при любых изменениях перерисовываем всю доску (упрощённо, можно точечно)
+    // но для обновления избранного нужна перерисовка только карточки – обходимся полной
+    if (event === 'INIT' || event === 'UPDATE' || event === 'ADD' || event === 'DELETE') {
+      this.#renderBoard();
+    }
   };
 }
