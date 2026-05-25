@@ -96,6 +96,7 @@ export default class PointPresenter {
     } catch {
       this.#editFormComponent.shake();
     } finally {
+      this.#editFormComponent.resetButtons(); // возвращаем кнопки в исходное состояние
       this.#uiBlocker.unblock();
     }
   };
@@ -104,10 +105,11 @@ export default class PointPresenter {
     this.#uiBlocker.block();
     try {
       await this.#pointsModel.deletePoint(pointId);
-      // DOM обновится через модель
+      // DOM обновится через модель (перерисовка всей доски)
     } catch {
       this.#editFormComponent.shake();
     } finally {
+      this.#editFormComponent.resetButtons(); // возвращаем "Delete"
       this.#uiBlocker.unblock();
     }
   };
@@ -159,6 +161,7 @@ export default class PointPresenter {
       replace(newComponent, this.#routePointComponent);
       this.#routePointComponent = newComponent;
     } else {
+      // Если форма открыта, сохраняем новое представление для последующей замены
       this.#routePointComponent = newComponent;
     }
   }
