@@ -21,8 +21,13 @@ export default class TripInfoPresenter {
       return;
     }
 
-    const destinations = points.map((point) => this.#pointsModel.getDestinationById(point.destination)).filter(Boolean);
+    // Собираем уникальные названия городов в порядке следования точек
+    const destinations = points
+      .map((point) => this.#pointsModel.getDestinationById(point.destination))
+      .filter(Boolean);
     const names = destinations.map((d) => d.name);
+
+    // Название маршрута
     let title = '';
     if (names.length <= 3) {
       title = names.join(' &mdash; ');
@@ -30,13 +35,15 @@ export default class TripInfoPresenter {
       title = `${names[0]} &mdash; ... &mdash; ${names[names.length - 1]}`;
     }
 
+    // Даты путешествия
     const startDate = humanizeDate(points[0].dateFrom, 'MMM D');
     const endDate = humanizeDate(points[points.length - 1].dateTo, 'MMM D');
     const dates = `${startDate}&nbsp;&mdash;&nbsp;${endDate}`;
 
+    // Общая стоимость (базовая цена + выбранные опции)
     const totalCost = points.reduce((sum, point) => {
-      const offers = this.#pointsModel.getSelectedOffers(point.type, point.offers);
-      const offersCost = offers.reduce((acc, offer) => acc + offer.price, 0);
+      const selectedOffers = this.#pointsModel.getSelectedOffers(point.type, point.offers);
+      const offersCost = selectedOffers.reduce((acc, offer) => acc + offer.price, 0);
       return sum + point.basePrice + offersCost;
     }, 0);
 
