@@ -17,9 +17,23 @@ function generateId() {
   return crypto.randomUUID();
 }
 
+/**
+ * Форматирует дату в указанный формат.
+ * @param {string} date - ISO-строка даты
+ * @param {string} format - формат dayjs (например, 'MMM D', 'HH:mm', 'd/m/y H:i')
+ * @returns {string} отформатированная дата или пустая строка, если date не задана
+ */
+
 function humanizeDate(date, format) {
   return date ? dayjs(date).format(format) : '';
 }
+
+/**
+ * Вычисляет и форматирует продолжительность между двумя датами согласно ТЗ.
+ * @param {string} dateFrom - ISO-строка начала
+ * @param {string} dateTo - ISO-строка окончания
+ * @returns {string} например, '23M', '02H 44M', '12H 00M', '07D 00H 00M'
+ */
 
 function formatDuration(dateFrom, dateTo) {
   const diff = dayjs(dateTo).diff(dayjs(dateFrom));
@@ -44,8 +58,22 @@ function capitalizeFirstLetter(string) {
   return string.charAt(0).toUpperCase() + string.slice(1);
 }
 
+/**
+ * Проверяет, является ли нажатая клавиша Escape.
+ * @param {KeyboardEvent} evt - событие клавиатуры
+ * @returns {boolean}
+ */
+
 function isEscapeKey(evt) {
   return evt.key === 'Escape' || evt.key === 'Esc';
 }
 
-export { getRandomInteger, getRandomArrayElement, generateId, humanizeDate, formatDuration, capitalizeFirstLetter, isEscapeKey };
+export {
+  getRandomInteger,
+  getRandomArrayElement,
+  generateId,
+  humanizeDate,
+  formatDuration,
+  capitalizeFirstLetter,
+  isEscapeKey
+};

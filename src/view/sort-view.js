@@ -58,7 +58,7 @@ export default class SortView extends AbstractView {
 
   #sortChangeHandler = (evt) => {
     evt.preventDefault();
-    const newSortType = evt.target.dataset.sortType; // чтение data-атрибута
+    const newSortType = evt.target.dataset.sortType;
     if (newSortType && newSortType !== this.#currentSort) {
       this.#handleSortChange(newSortType);
     }
