@@ -199,7 +199,7 @@ export default class EditFormView extends AbstractStatefulView {
   #handleDeleteClick = null;
   #datepickerFrom = null;
   #datepickerTo = null;
-  #getOffersForType = null; // функция получения offers по типу
+  #getOffersForType = null;
 
   constructor({
     point,
@@ -210,7 +210,7 @@ export default class EditFormView extends AbstractStatefulView {
     onSubmit,
     onRollupClick,
     onDeleteClick,
-    getOffersForType // <-- новый параметр
+    getOffersForType
   } = {}) {
     super();
     this.#isNewPoint = isNewPoint;
@@ -248,7 +248,6 @@ export default class EditFormView extends AbstractStatefulView {
   }
 
   _restoreHandlers() {
-    // Уничтожаем старые экземпляры flatpickr, если есть
     if (this.#datepickerFrom) {
       this.#datepickerFrom.destroy();
       this.#datepickerFrom = null;
@@ -370,16 +369,11 @@ export default class EditFormView extends AbstractStatefulView {
 
   #typeChangeHandler = (evt) => {
     const newType = evt.target.value;
-
-    // Получаем offers для нового типа через переданную функцию
     const newOffers = this.#getOffersForType ? this.#getOffersForType(newType) : [];
-
-    // Обновляем состояние: тип, offers, сбрасываем выбранные offers
     this._state.point.type = newType;
     this._state.offers = newOffers;
-    this._state.point.offers = []; // сброс выбранных опций
-
-    this.updateElement(); // перерисовка с восстановлением обработчиков
+    this._state.point.offers = [];
+    this.updateElement();
   };
 
   #destinationChangeHandler = (evt) => {

@@ -104,7 +104,7 @@ export default class PointPresenter {
     this.#uiBlocker.block();
     try {
       await this.#pointsModel.deletePoint(pointId);
-      // DOM обновится через перерисовку доски
+      // DOM обновится через модель
     } catch {
       this.#editFormComponent.shake();
     } finally {
@@ -159,7 +159,6 @@ export default class PointPresenter {
       replace(newComponent, this.#routePointComponent);
       this.#routePointComponent = newComponent;
     } else {
-      // если форма открыта, сохраняем новое представление для последующей замены
       this.#routePointComponent = newComponent;
     }
   }
