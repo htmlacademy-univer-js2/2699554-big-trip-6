@@ -93,7 +93,7 @@ function createDestinationTemplate(destination) {
   `;
 }
 
-function createEditFormTemplate(point, destination, offers, allDestinations, isNewPoint = false) {
+function createEditFormTemplate(point, destination, offers, allDestinations, isNewPoint = false, state = {}) {
   const { id, type, dateFrom, dateTo, basePrice, offers: selectedOffers } = point;
   const pointId = id || 'new';
 
@@ -104,6 +104,12 @@ function createEditFormTemplate(point, destination, offers, allDestinations, isN
   const hasOffers = offers && offers.length > 0;
   const hasDestination = destination && (destination.description || (destination.pictures && destination.pictures.length > 0));
   const hasDetails = hasOffers || hasDestination;
+
+  const { isSaving = false, isDeleting = false, isDisabled = false } = state;
+
+  const saveButtonText = isSaving ? 'Saving...' : 'Save';
+  const resetButtonText = isNewPoint ? 'Cancel' : (isDeleting ? 'Deleting...' : 'Delete');
+  const disabledAttr = isDisabled ? 'disabled' : '';
 
   return `
     <li class="trip-events__item">
@@ -179,8 +185,8 @@ function createEditFormTemplate(point, destination, offers, allDestinations, isN
             >
           </div>
 
-          <button class="event__save-btn btn btn--blue" type="submit">Save</button>
-          <button class="event__reset-btn" type="reset">${isNewPoint ? 'Cancel' : 'Delete'}</button>
+          <button class="event__save-btn btn btn--blue" type="submit" ${disabledAttr}>${saveButtonText}</button>
+          <button class="event__reset-btn" type="reset" ${disabledAttr}>${resetButtonText}</button>
           ${!isNewPoint ? `
             <button class="event__rollup-btn" type="button">
               <span class="visually-hidden">Open event</span>
@@ -230,6 +236,9 @@ export default class EditFormView extends AbstractStatefulView {
       destination,
       offers,
       allDestinations,
+      isSaving: false,
+      isDeleting: false,
+      isDisabled: false,
     });
 
     this._restoreHandlers();
@@ -249,8 +258,12 @@ export default class EditFormView extends AbstractStatefulView {
   }
 
   get template() {
-    const { point, destination, offers, allDestinations } = this._state;
-    return createEditFormTemplate(point, destination, offers, allDestinations, this.#isNewPoint);
+    const { point, destination, offers, allDestinations, isSaving, isDeleting, isDisabled } = this._state;
+    return createEditFormTemplate(point, destination, offers, allDestinations, this.#isNewPoint, {
+      isSaving,
+      isDeleting,
+      isDisabled
+    });
   }
 
   _restoreHandlers() {
@@ -308,20 +321,17 @@ export default class EditFormView extends AbstractStatefulView {
       rollupBtn.addEventListener('click', this.#rollupClickHandler);
     }
 
-    // Тип точки маршрута
     const typeInputs = this.element.querySelectorAll('.event__type-input');
     typeInputs.forEach((input) => {
       input.addEventListener('change', this.#typeChangeHandler);
     });
 
-    // Пункт назначения – дополнительно чистим невалидный ввод
     const destinationInput = this.element.querySelector('.event__input--destination');
     if (destinationInput) {
       destinationInput.addEventListener('change', this.#destinationChangeHandler);
-      destinationInput.addEventListener('blur', this.#destinationBlurHandler); // валидация при потере фокуса
+      destinationInput.addEventListener('blur', this.#destinationBlurHandler);
     }
 
-    // Цена – разрешаем только цифры (через input event)
     const priceInput = this.element.querySelector('.event__input--price');
     if (priceInput) {
       priceInput.addEventListener('input', this.#priceInputHandler);
@@ -337,10 +347,8 @@ export default class EditFormView extends AbstractStatefulView {
     const type = formData.get('event-type');
     const destinationName = formData.get('event-destination');
 
-    // Проверка, что город существует в списке
     const destination = this._state.allDestinations.find((d) => d.name === destinationName);
     if (!destination) {
-      // показываем ошибку – shake на поле
       const destinationInput = this.element.querySelector('.event__input--destination');
       destinationInput?.classList.add('shake');
       setTimeout(() => destinationInput?.classList.remove('shake'), 600);
@@ -370,6 +378,7 @@ export default class EditFormView extends AbstractStatefulView {
       isFavorite: this._state.point.isFavorite
     };
 
+    this.setSaving();                     // включаем «Saving...»
     this.#handleSubmit(updatedPoint);
   };
 
@@ -388,8 +397,9 @@ export default class EditFormView extends AbstractStatefulView {
   #deleteClickHandler = (evt) => {
     evt.preventDefault();
     if (this.#isNewPoint) {
-      this.#handleDeleteClick();
+      this.#handleDeleteClick();          // Cancel
     } else {
+      this.setDeleting();                 // включаем «Deleting...»
       this.#handleDeleteClick(this._state.point.id);
     }
   };
@@ -408,8 +418,6 @@ export default class EditFormView extends AbstractStatefulView {
     const destination = this._state.allDestinations.find((d) => d.name === destinationName);
     if (destination) {
       this._state.destination = destination;
-    } else {
-      // если ввели что-то не из списка, не обновляем destination (оставляем прежнее)
     }
     this.updateElement();
   };
@@ -419,14 +427,32 @@ export default class EditFormView extends AbstractStatefulView {
     const destinationName = input.value;
     const exists = this._state.allDestinations.some((d) => d.name === destinationName);
     if (!exists) {
-      // сбрасываем на предыдущее значение
       input.value = this._state.destination ? this._state.destination.name : '';
     }
   };
 
   #priceInputHandler = (evt) => {
     const input = evt.target;
-    // разрешаем только цифры
     input.value = input.value.replace(/[^0-9]/g, '');
   };
+
+  // ---------- публичные методы для управления состоянием кнопок ----------
+  setSaving() {
+    this._state.isSaving = true;
+    this._state.isDisabled = true;
+    this.updateElement();
+  }
+
+  setDeleting() {
+    this._state.isDeleting = true;
+    this._state.isDisabled = true;
+    this.updateElement();
+  }
+
+  resetButtons() {
+    this._state.isSaving = false;
+    this._state.isDeleting = false;
+    this._state.isDisabled = false;
+    this.updateElement();
+  }
 }

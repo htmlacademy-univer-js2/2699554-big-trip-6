@@ -35,7 +35,7 @@ export default class BoardPresenter {
   #errorComponent = null;
 
   #pointPresenters = new Map();
-  #currentEditForm = null;
+  #currentEditForm = null;   // форма создания новой точки
   #tripInfoPresenter = null;
 
   #uiBlocker = new UiBlocker(TimeLimit);
@@ -59,12 +59,14 @@ export default class BoardPresenter {
 
     this.#tripInfoPresenter.init();
 
+    // Если данные ещё не загружены, показываем лоадер или ошибку
     if (this.#pointsModel.isLoading || this.#pointsModel.isError) {
       this.#renderBoard();
     }
   }
 
   #renderBoard() {
+    // Состояния загрузки/ошибки
     if (this.#pointsModel.isLoading) {
       this.#renderLoadingMessage();
       return;
@@ -237,11 +239,13 @@ export default class BoardPresenter {
   }
 
   #handleViewModeChange = () => {
+    // Закрываем все формы редактирования точек
     this.#pointPresenters.forEach((presenter) => presenter.resetView());
     this.#closeCurrentEditForm();
   };
 
   #handleNewEventClick = () => {
+    // Сброс фильтров и сортировки, если нужно
     if (this.#currentFilter !== FilterType.EVERYTHING || this.#currentSort !== SortType.DAY) {
       this.#currentFilter = FilterType.EVERYTHING;
       this.#currentSort = SortType.DAY;
@@ -274,6 +278,7 @@ export default class BoardPresenter {
       isNewPoint: true,
       onSubmit: this.#handleCreateFormSubmit,
       onDeleteClick: () => {
+        // Отмена создания (кнопка Cancel)
         this.#closeCurrentEditForm();
         this.#newEventButton.disabled = false;
       },
@@ -298,6 +303,9 @@ export default class BoardPresenter {
         this.#currentEditForm.shake();
       }
     } finally {
+      if (this.#currentEditForm) {
+        this.#currentEditForm.resetButtons(); // возвращаем "Save"/"Cancel"
+      }
       this.#uiBlocker.unblock();
     }
   };
@@ -320,6 +328,7 @@ export default class BoardPresenter {
     }
   };
 
+  // Обработчик изменений модели – полная перерисовка доски
   #handleModelEvent = (event, payload) => {
     if (event === 'INIT' || event === 'UPDATE' || event === 'ADD' || event === 'DELETE') {
       this.#renderBoard();
