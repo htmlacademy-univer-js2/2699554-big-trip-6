@@ -4,6 +4,7 @@ import { humanizeDate, capitalizeFirstLetter } from '../utils.js';
 import flatpickr from 'flatpickr';
 import 'flatpickr/dist/flatpickr.min.css';
 
+// ------------------- вспомогательные функции шаблонов -------------------
 function createTypeListTemplate(currentType, pointId) {
   return POINT_TYPES.map((type) => `
     <div class="event__type-item">
@@ -15,15 +16,17 @@ function createTypeListTemplate(currentType, pointId) {
         value="${type}"
         ${type === currentType ? 'checked' : ''}
       >
-      <label class="event__type-label event__type-label--${type}" for="event-type-${type}-${pointId}">${capitalizeFirstLetter(type)}</label>
+      <label class="event__type-label event__type-label--${type}" for="event-type-${type}-${pointId}">
+        ${capitalizeFirstLetter(type)}
+      </label>
     </div>
   `).join('');
 }
 
 function createDestinationListTemplate(destinations) {
-  return destinations.map((destination) => `
-    <option value="${destination.name}"></option>
-  `).join('');
+  return destinations
+    .map((destination) => `<option value="${destination.name}"></option>`)
+    .join('');
 }
 
 function createOffersTemplate(offers, selectedOffers, pointId) {
@@ -133,6 +136,7 @@ function createEditFormTemplate(point, destination, offers, allDestinations, isN
               value="${destinationName}"
               list="destination-list-${pointId}"
               autocomplete="off"
+              required
             >
             <datalist id="destination-list-${pointId}">
               ${createDestinationListTemplate(allDestinations)}
@@ -170,6 +174,8 @@ function createEditFormTemplate(point, destination, offers, allDestinations, isN
               type="text"
               name="event-price"
               value="${basePrice}"
+              inputmode="numeric"
+              pattern="[0-9]*"
             >
           </div>
 
@@ -302,16 +308,27 @@ export default class EditFormView extends AbstractStatefulView {
       rollupBtn.addEventListener('click', this.#rollupClickHandler);
     }
 
+    // Тип точки маршрута
     const typeInputs = this.element.querySelectorAll('.event__type-input');
     typeInputs.forEach((input) => {
       input.addEventListener('change', this.#typeChangeHandler);
     });
 
+    // Пункт назначения – дополнительно чистим невалидный ввод
     const destinationInput = this.element.querySelector('.event__input--destination');
     if (destinationInput) {
       destinationInput.addEventListener('change', this.#destinationChangeHandler);
+      destinationInput.addEventListener('blur', this.#destinationBlurHandler); // валидация при потере фокуса
+    }
+
+    // Цена – разрешаем только цифры (через input event)
+    const priceInput = this.element.querySelector('.event__input--price');
+    if (priceInput) {
+      priceInput.addEventListener('input', this.#priceInputHandler);
     }
   }
+
+  // ------------------- обработчики -------------------
 
   #formSubmitHandler = (evt) => {
     evt.preventDefault();
@@ -319,7 +336,17 @@ export default class EditFormView extends AbstractStatefulView {
     const formData = new FormData(evt.target);
     const type = formData.get('event-type');
     const destinationName = formData.get('event-destination');
+
+    // Проверка, что город существует в списке
     const destination = this._state.allDestinations.find((d) => d.name === destinationName);
+    if (!destination) {
+      // показываем ошибку – shake на поле
+      const destinationInput = this.element.querySelector('.event__input--destination');
+      destinationInput?.classList.add('shake');
+      setTimeout(() => destinationInput?.classList.remove('shake'), 600);
+      return;
+    }
+
     const startTimeStr = formData.get('event-start-time');
     const endTimeStr = formData.get('event-end-time');
     const price = parseInt(formData.get('event-price'), 10);
@@ -335,7 +362,7 @@ export default class EditFormView extends AbstractStatefulView {
     const updatedPoint = {
       id: this._state.point.id,
       type,
-      destination: destination ? destination.id : null,
+      destination: destination.id,
       dateFrom: this.#parseDateTime(startTimeStr),
       dateTo: this.#parseDateTime(endTimeStr),
       basePrice: isNaN(price) ? 0 : price,
@@ -379,7 +406,27 @@ export default class EditFormView extends AbstractStatefulView {
   #destinationChangeHandler = (evt) => {
     const destinationName = evt.target.value;
     const destination = this._state.allDestinations.find((d) => d.name === destinationName);
-    this._state.destination = destination;
+    if (destination) {
+      this._state.destination = destination;
+    } else {
+      // если ввели что-то не из списка, не обновляем destination (оставляем прежнее)
+    }
     this.updateElement();
+  };
+
+  #destinationBlurHandler = (evt) => {
+    const input = evt.target;
+    const destinationName = input.value;
+    const exists = this._state.allDestinations.some((d) => d.name === destinationName);
+    if (!exists) {
+      // сбрасываем на предыдущее значение
+      input.value = this._state.destination ? this._state.destination.name : '';
+    }
+  };
+
+  #priceInputHandler = (evt) => {
+    const input = evt.target;
+    // разрешаем только цифры
+    input.value = input.value.replace(/[^0-9]/g, '');
   };
 }
