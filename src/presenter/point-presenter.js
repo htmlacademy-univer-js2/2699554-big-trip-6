@@ -64,7 +64,8 @@ export default class PointPresenter {
       allDestinations,
       onSubmit: this.#handleFormSubmit,
       onRollupClick: this.#handleRollupClick,
-      onDeleteClick: this.#handleDeleteClick
+      onDeleteClick: this.#handleDeleteClick,
+      getOffersForType: (type) => this.#pointsModel.getOffersByType(type)
     });
 
     replace(this.#editFormComponent, this.#routePointComponent);
