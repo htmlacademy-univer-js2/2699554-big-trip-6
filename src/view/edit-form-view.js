@@ -199,21 +199,31 @@ export default class EditFormView extends AbstractStatefulView {
   #handleDeleteClick = null;
   #datepickerFrom = null;
   #datepickerTo = null;
+  #getOffersForType = null; // функция получения offers по типу
 
-  constructor({ point, destination, offers, allDestinations, isNewPoint = false, onSubmit, onRollupClick, onDeleteClick } = {}) {
+  constructor({
+    point,
+    destination,
+    offers,
+    allDestinations,
+    isNewPoint = false,
+    onSubmit,
+    onRollupClick,
+    onDeleteClick,
+    getOffersForType // <-- новый параметр
+  } = {}) {
     super();
     this.#isNewPoint = isNewPoint;
     this.#handleSubmit = onSubmit;
     this.#handleRollupClick = onRollupClick;
     this.#handleDeleteClick = onDeleteClick;
+    this.#getOffersForType = getOffersForType;
 
     this._setState({
       point: point || this.#getEmptyPoint(),
       destination,
       offers,
       allDestinations,
-      isSaving: false,
-      isDeleting: false,
     });
 
     this._restoreHandlers();
@@ -238,11 +248,7 @@ export default class EditFormView extends AbstractStatefulView {
   }
 
   _restoreHandlers() {
-    this.#initDatepickers();
-    this.#addEventListeners();
-  }
-
-  #initDatepickers() {
+    // Уничтожаем старые экземпляры flatpickr, если есть
     if (this.#datepickerFrom) {
       this.#datepickerFrom.destroy();
       this.#datepickerFrom = null;
@@ -252,6 +258,11 @@ export default class EditFormView extends AbstractStatefulView {
       this.#datepickerTo = null;
     }
 
+    this.#initDatepickers();
+    this.#addEventListeners();
+  }
+
+  #initDatepickers() {
     const startTimeInput = this.element.querySelector('[name="event-start-time"]');
     const endTimeInput = this.element.querySelector('[name="event-end-time"]');
 
@@ -340,8 +351,7 @@ export default class EditFormView extends AbstractStatefulView {
     if (!dateTimeStr) return '';
     const [day, month, yearShort, hours, minutes] = dateTimeStr.split(/[\/\s:]/);
     const year = `20${yearShort}`;
-    const isoString = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
-    return isoString;
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
   }
 
   #rollupClickHandler = (evt) => {
@@ -360,8 +370,16 @@ export default class EditFormView extends AbstractStatefulView {
 
   #typeChangeHandler = (evt) => {
     const newType = evt.target.value;
+
+    // Получаем offers для нового типа через переданную функцию
+    const newOffers = this.#getOffersForType ? this.#getOffersForType(newType) : [];
+
+    // Обновляем состояние: тип, offers, сбрасываем выбранные offers
     this._state.point.type = newType;
-    this.updateElement(); // перерисовка с новым типом
+    this._state.offers = newOffers;
+    this._state.point.offers = []; // сброс выбранных опций
+
+    this.updateElement(); // перерисовка с восстановлением обработчиков
   };
 
   #destinationChangeHandler = (evt) => {

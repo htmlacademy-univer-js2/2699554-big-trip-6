@@ -290,7 +290,8 @@ export default class BoardPresenter {
       onDeleteClick: () => {
         this.#closeCurrentEditForm();
         this.#newEventButton.disabled = false;
-      }
+      },
+      getOffersForType: (type) => this.#pointsModel.getOffersByType(type)
     });
 
     render(createFormComponent, this.#listComponent.element, RenderPosition.AFTERBEGIN);
