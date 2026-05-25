@@ -44,4 +44,8 @@ function capitalizeFirstLetter(string) {
   return string.charAt(0).toUpperCase() + string.slice(1);
 }
 
-export { getRandomInteger, getRandomArrayElement, generateId, humanizeDate, formatDuration, capitalizeFirstLetter };
+function isEscapeKey(evt) {
+  return evt.key === 'Escape' || evt.key === 'Esc';
+}
+
+export { getRandomInteger, getRandomArrayElement, generateId, humanizeDate, formatDuration, capitalizeFirstLetter, isEscapeKey };
