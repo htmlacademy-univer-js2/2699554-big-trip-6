@@ -35,7 +35,7 @@ export default class BoardPresenter {
   #errorComponent = null;
 
   #pointPresenters = new Map();
-  #currentEditForm = null; // для новой точки
+  #currentEditForm = null; // для формы создания новой точки
   #tripInfoPresenter = null;
 
   #uiBlocker = new UiBlocker(TimeLimit);
@@ -47,21 +47,27 @@ export default class BoardPresenter {
     this.#newEventButton = newEventButton;
 
     const tripInfoContainer = this.#siteHeaderElement.querySelector('.trip-main__trip-info');
-    this.#tripInfoPresenter = new TripInfoPresenter({ container: tripInfoContainer, pointsModel: this.#pointsModel });
+    this.#tripInfoPresenter = new TripInfoPresenter({
+      container: tripInfoContainer,
+      pointsModel: this.#pointsModel
+    });
   }
 
   init() {
     this.#pointsModel.addObserver(this.#handleModelEvent);
     this.#newEventButton.addEventListener('click', this.#handleNewEventClick);
 
+    // Инициализируем блок информации о путешествии (маршрут, даты, стоимость)
     this.#tripInfoPresenter.init();
 
+    // Первичная отрисовка доски, если данные ещё не загружены (состояния загрузки/ошибки)
     if (this.#pointsModel.isLoading || this.#pointsModel.isError) {
       this.#renderBoard();
     }
   }
 
   #renderBoard() {
+    // Показываем загрузку или ошибку, если нужно
     if (this.#pointsModel.isLoading) {
       this.#renderLoadingMessage();
       return;
@@ -75,8 +81,10 @@ export default class BoardPresenter {
     const filteredPoints = this.#getFilteredPoints();
     const sortedPoints = this.#getSortedPoints(filteredPoints);
 
+    // Полная очистка доски
     this.#clearBoard();
 
+    // Отрисовка фильтров (с пересчётом количества)
     this.#renderFilters();
 
     if (sortedPoints.length === 0) {
@@ -84,17 +92,21 @@ export default class BoardPresenter {
       return;
     }
 
+    // Отрисовка компонента сортировки
     this.#renderSort();
     render(this.#listComponent, this.#tripEventsElement);
 
+    // Отрисовка каждой точки через дочерний презентер
     sortedPoints.forEach((point) => this.#renderPoint(point));
   }
 
   #clearBoard() {
+    // Удаляем презентеры точек
     this.#pointPresenters.forEach((presenter) => presenter.destroy());
     this.#pointPresenters.clear();
+
+    // Закрываем форму создания, если она была открыта
     this.#closeCurrentEditForm();
-    // sort, filters, list оставляем - они перерендерятся или заменятся
   }
 
   #getFilteredPoints() {
@@ -125,7 +137,7 @@ export default class BoardPresenter {
         });
       case SortType.PRICE:
         return points.slice().sort((a, b) => b.basePrice - a.basePrice);
-      default:
+      default: // SortType.DAY – по дате начала, от старых к новым
         return points.slice().sort((a, b) => dayjs(a.dateFrom).diff(dayjs(b.dateFrom)));
     }
   }
@@ -178,6 +190,7 @@ export default class BoardPresenter {
       return;
     }
 
+    // При смене фильтра закрываем форму редактирования и сбрасываем сортировку
     this.#closeCurrentEditForm();
     this.#currentFilter = filterType;
     this.#currentSort = SortType.DAY;
@@ -200,6 +213,7 @@ export default class BoardPresenter {
   }
 
   #handleSortChange = (sortType) => {
+    // Проверка: перерисовываем только если сортировка действительно изменилась
     if (this.#currentSort === sortType) {
       return;
     }
@@ -234,12 +248,14 @@ export default class BoardPresenter {
     this.#pointPresenters.set(point.id, pointPresenter);
   }
 
+  // Метод для закрытия всех форм редактирования при открытии новой
   #handleViewModeChange = () => {
     this.#pointPresenters.forEach((presenter) => presenter.resetView());
     this.#closeCurrentEditForm();
   };
 
   #handleNewEventClick = () => {
+    // При создании новой точки сбрасываем фильтры и сортировку на значения по умолчанию
     if (this.#currentFilter !== FilterType.EVERYTHING || this.#currentSort !== SortType.DAY) {
       this.#currentFilter = FilterType.EVERYTHING;
       this.#currentSort = SortType.DAY;
@@ -291,7 +307,9 @@ export default class BoardPresenter {
       this.#closeCurrentEditForm();
       this.#newEventButton.disabled = false;
     } catch {
-      this.#currentEditForm.shake();
+      if (this.#currentEditForm) {
+        this.#currentEditForm.shake();
+      }
     } finally {
       this.#uiBlocker.unblock();
     }
@@ -315,9 +333,8 @@ export default class BoardPresenter {
     }
   };
 
+  // Обработчик событий от модели: при любом изменении данных перерисовываем доску
   #handleModelEvent = (event, payload) => {
-    // при любых изменениях перерисовываем всю доску (упрощённо, можно точечно)
-    // но для обновления избранного нужна перерисовка только карточки – обходимся полной
     if (event === 'INIT' || event === 'UPDATE' || event === 'ADD' || event === 'DELETE') {
       this.#renderBoard();
     }

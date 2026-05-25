@@ -10,6 +10,7 @@ function createSortItemTemplate(sortType, isChecked, isDisabled = false) {
         type="radio"
         name="trip-sort"
         value="sort-${sortType}"
+        data-sort-type="${sortType}"
         ${isChecked ? 'checked' : ''}
         ${isDisabled ? 'disabled' : ''}
       >
@@ -57,7 +58,9 @@ export default class SortView extends AbstractView {
 
   #sortChangeHandler = (evt) => {
     evt.preventDefault();
-    const sortType = evt.target.value.replace('sort-', '');
-    this.#handleSortChange(sortType);
+    const newSortType = evt.target.dataset.sortType; // чтение data-атрибута
+    if (newSortType && newSortType !== this.#currentSort) {
+      this.#handleSortChange(newSortType);
+    }
   };
 }
