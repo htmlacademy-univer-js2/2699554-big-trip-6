@@ -35,7 +35,7 @@ export default class BoardPresenter {
   #errorComponent = null;
 
   #pointPresenters = new Map();
-  #currentEditForm = null;   // форма создания новой точки
+  #currentEditForm = null; // форма создания новой точки
   #tripInfoPresenter = null;
 
   #uiBlocker = new UiBlocker(TimeLimit);
@@ -329,7 +329,7 @@ export default class BoardPresenter {
   };
 
   // Обработчик изменений модели – полная перерисовка доски
-  #handleModelEvent = (event, payload) => {
+  #handleModelEvent = (event) => {
     if (event === 'INIT' || event === 'UPDATE' || event === 'ADD' || event === 'DELETE') {
       this.#renderBoard();
     }

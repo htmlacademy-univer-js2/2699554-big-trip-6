@@ -34,13 +34,11 @@ export const adaptPointFromServer = (serverPoint) => ({
 
 export const adaptPointToServer = (clientPoint) => ({
   id: clientPoint.id,
-  base_price: clientPoint.basePrice,
-  date_from: clientPoint.dateFrom,
-  date_to: clientPoint.dateTo,
+  'base_price': clientPoint.basePrice,
+  'date_from': clientPoint.dateFrom,
+  'date_to': clientPoint.dateTo,
   destination: clientPoint.destination,
-  is_favorite: clientPoint.isFavorite,
+  'is_favorite': clientPoint.isFavorite,
   offers: clientPoint.offers,
   type: clientPoint.type,
 });
-
-// Пункты назначения и опции не требуют адаптации, структура совпадает.

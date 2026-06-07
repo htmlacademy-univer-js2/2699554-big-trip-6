@@ -108,8 +108,14 @@ function createEditFormTemplate(point, destination, offers, allDestinations, isN
   const { isSaving = false, isDeleting = false, isDisabled = false } = state;
 
   const saveButtonText = isSaving ? 'Saving...' : 'Save';
-  const resetButtonText = isNewPoint ? 'Cancel' : (isDeleting ? 'Deleting...' : 'Delete');
   const disabledAttr = isDisabled ? 'disabled' : '';
+
+  let resetButtonText;
+  if (isNewPoint) {
+    resetButtonText = 'Cancel';
+  } else {
+    resetButtonText = isDeleting ? 'Deleting...' : 'Delete';
+  }
 
   return `
     <li class="trip-events__item">
@@ -378,13 +384,16 @@ export default class EditFormView extends AbstractStatefulView {
       isFavorite: this._state.point.isFavorite
     };
 
-    this.setSaving();                     // включаем «Saving...»
+    this.setSaving(); // включаем «Saving...»
     this.#handleSubmit(updatedPoint);
   };
 
   #parseDateTime(dateTimeStr) {
-    if (!dateTimeStr) return '';
-    const [day, month, yearShort, hours, minutes] = dateTimeStr.split(/[\/\s:]/);
+    if (!dateTimeStr) {
+      return '';
+    }
+
+    const [day, month, yearShort, hours, minutes] = dateTimeStr.split(/[/\s:]/);
     const year = `20${yearShort}`;
     return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
   }
@@ -397,9 +406,9 @@ export default class EditFormView extends AbstractStatefulView {
   #deleteClickHandler = (evt) => {
     evt.preventDefault();
     if (this.#isNewPoint) {
-      this.#handleDeleteClick();          // Cancel
+      this.#handleDeleteClick(); // Cancel
     } else {
-      this.setDeleting();                 // включаем «Deleting...»
+      this.setDeleting(); // включаем «Deleting...»
       this.#handleDeleteClick(this._state.point.id);
     }
   };
