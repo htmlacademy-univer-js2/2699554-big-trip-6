@@ -9,7 +9,6 @@ import PointPresenter from './point-presenter.js';
 import TripInfoPresenter from './trip-info-presenter.js';
 import { render, replace, remove, RenderPosition } from '../framework/render.js';
 import { FilterType, SortType } from '../const.js';
-import { generateId } from '../utils.js';
 import dayjs from 'dayjs';
 import UiBlocker from '../framework/ui-blocker/ui-blocker.js';
 
@@ -58,11 +57,7 @@ export default class BoardPresenter {
     this.#newEventButton.addEventListener('click', this.#handleNewEventClick);
 
     this.#tripInfoPresenter.init();
-
-    // Если данные ещё не загружены, показываем лоадер или ошибку
-    if (this.#pointsModel.isLoading || this.#pointsModel.isError) {
-      this.#renderBoard();
-    }
+    this.#renderBoard();
   }
 
   #renderBoard() {
@@ -101,19 +96,31 @@ export default class BoardPresenter {
     this.#closeCurrentEditForm();
   }
 
+  #isPointFuture(point, now) {
+    return new Date(point.dateFrom) > now;
+  }
+
+  #isPointPresent(point, now) {
+    const start = new Date(point.dateFrom);
+    const end = new Date(point.dateTo);
+    return start <= now && end >= now;
+  }
+
+  #isPointPast(point, now) {
+    return new Date(point.dateTo) < now;
+  }
+
   #getFilteredPoints() {
     const points = this.#pointsModel.points;
     const now = new Date();
 
     switch (this.#currentFilter) {
       case FilterType.FUTURE:
-        return points.filter((point) => new Date(point.dateFrom) > now);
+        return points.filter((point) => this.#isPointFuture(point, now));
       case FilterType.PRESENT:
-        return points.filter((point) =>
-          new Date(point.dateFrom) <= now && new Date(point.dateTo) >= now
-        );
+        return points.filter((point) => this.#isPointPresent(point, now));
       case FilterType.PAST:
-        return points.filter((point) => new Date(point.dateTo) < now);
+        return points.filter((point) => this.#isPointPast(point, now));
       default:
         return points;
     }
@@ -164,13 +171,13 @@ export default class BoardPresenter {
           count = points.length;
           break;
         case FilterType.FUTURE:
-          count = points.filter((p) => new Date(p.dateFrom) > now).length;
+          count = points.filter((p) => this.#isPointFuture(p, now)).length;
           break;
         case FilterType.PRESENT:
-          count = points.filter((p) => new Date(p.dateFrom) <= now && new Date(p.dateTo) >= now).length;
+          count = points.filter((p) => this.#isPointPresent(p, now)).length;
           break;
         case FilterType.PAST:
-          count = points.filter((p) => new Date(p.dateTo) < now).length;
+          count = points.filter((p) => this.#isPointPast(p, now)).length;
           break;
       }
       return { type, count };
@@ -260,7 +267,7 @@ export default class BoardPresenter {
     const typeOffers = this.#pointsModel.getOffersByType(defaultType);
 
     const newPoint = {
-      id: generateId(),
+      id: null,
       type: defaultType,
       destination: null,
       dateFrom: dayjs().toISOString(),

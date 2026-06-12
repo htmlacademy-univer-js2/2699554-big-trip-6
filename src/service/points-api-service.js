@@ -1,7 +1,8 @@
 import ApiService from '../framework/api-service.js';
 
 const END_POINT = 'https://24.objects.htmlacademy.pro/big-trip';
-const AUTHORIZATION = `Basic ${crypto.randomUUID().slice(0, 10)}`;
+const AUTH_TOKEN_LENGTH = 10;
+const AUTHORIZATION = `Basic ${crypto.randomUUID().slice(0, AUTH_TOKEN_LENGTH)}`;
 
 export default class PointsApiService extends ApiService {
   constructor() {

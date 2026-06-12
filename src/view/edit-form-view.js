@@ -1,8 +1,15 @@
 import AbstractStatefulView from '../framework/view/abstract-stateful-view.js';
 import { POINT_TYPES } from '../const.js';
 import { humanizeDate, capitalizeFirstLetter } from '../utils.js';
+import dayjs from 'dayjs';
+import customParseFormat from 'dayjs/plugin/customParseFormat.js';
 import flatpickr from 'flatpickr';
 import 'flatpickr/dist/flatpickr.min.css';
+
+dayjs.extend(customParseFormat);
+
+const DATEPICKER_DATE_FORMAT = 'd/m/y H:i';
+const DATE_PARSE_FORMAT = 'D/M/YY H:mm';
 
 // ------------------- вспомогательные функции шаблонов -------------------
 function createTypeListTemplate(currentType, pointId) {
@@ -293,7 +300,7 @@ export default class EditFormView extends AbstractStatefulView {
     if (startTimeInput) {
       this.#datepickerFrom = flatpickr(startTimeInput, {
         enableTime: true,
-        dateFormat: 'd/m/y H:i',
+        dateFormat: DATEPICKER_DATE_FORMAT,
         onChange: ([selectedDate]) => {
           if (this.#datepickerTo && selectedDate) {
             this.#datepickerTo.set('minDate', selectedDate);
@@ -305,7 +312,7 @@ export default class EditFormView extends AbstractStatefulView {
     if (endTimeInput) {
       this.#datepickerTo = flatpickr(endTimeInput, {
         enableTime: true,
-        dateFormat: 'd/m/y H:i',
+        dateFormat: DATEPICKER_DATE_FORMAT,
       });
     }
   }
@@ -393,17 +400,8 @@ export default class EditFormView extends AbstractStatefulView {
       return '';
     }
 
-    const [day, month, yearShort, hours, minutes] = dateTimeStr.split(/[/\s:]/);
-    const year = `20${yearShort}`;
-    const date = new Date(
-      Number(year),
-      Number(month) - 1,
-      Number(day),
-      Number(hours),
-      Number(minutes)
-    );
-
-    return date.toISOString();
+    const parsedDate = dayjs(dateTimeStr, DATE_PARSE_FORMAT, true);
+    return parsedDate.isValid() ? parsedDate.toISOString() : '';
   }
 
   #rollupClickHandler = (evt) => {
