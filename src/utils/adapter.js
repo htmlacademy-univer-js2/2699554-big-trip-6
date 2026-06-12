@@ -32,13 +32,20 @@ export const adaptPointFromServer = (serverPoint) => ({
   type: serverPoint.type,
 });
 
-export const adaptPointToServer = (clientPoint) => ({
-  id: clientPoint.id,
-  'base_price': clientPoint.basePrice,
-  'date_from': clientPoint.dateFrom,
-  'date_to': clientPoint.dateTo,
-  destination: clientPoint.destination,
-  'is_favorite': clientPoint.isFavorite,
-  offers: clientPoint.offers,
-  type: clientPoint.type,
-});
+export const adaptPointToServer = (clientPoint) => {
+  const serverPoint = {
+    'base_price': clientPoint.basePrice,
+    'date_from': clientPoint.dateFrom,
+    'date_to': clientPoint.dateTo,
+    destination: clientPoint.destination,
+    'is_favorite': clientPoint.isFavorite,
+    offers: clientPoint.offers,
+    type: clientPoint.type,
+  };
+
+  if (clientPoint.id) {
+    serverPoint.id = clientPoint.id;
+  }
+
+  return serverPoint;
+};

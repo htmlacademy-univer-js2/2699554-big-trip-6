@@ -22,7 +22,8 @@ export default class TripInfoPresenter {
     }
 
     // Собираем уникальные названия городов в порядке следования точек
-    const destinations = points
+    const sortedPoints = points.slice().sort((a, b) => new Date(a.dateFrom) - new Date(b.dateFrom));
+    const destinations = sortedPoints
       .map((point) => this.#pointsModel.getDestinationById(point.destination))
       .filter(Boolean);
     const names = destinations.map((d) => d.name);
@@ -36,8 +37,8 @@ export default class TripInfoPresenter {
     }
 
     // Даты путешествия
-    const startDate = humanizeDate(points[0].dateFrom, 'MMM D');
-    const endDate = humanizeDate(points[points.length - 1].dateTo, 'MMM D');
+    const startDate = humanizeDate(sortedPoints[0].dateFrom, 'D MMM');
+    const endDate = humanizeDate(sortedPoints[sortedPoints.length - 1].dateTo, 'D MMM');
     const dates = `${startDate}&nbsp;&mdash;&nbsp;${endDate}`;
 
     // Общая стоимость (базовая цена + выбранные опции)

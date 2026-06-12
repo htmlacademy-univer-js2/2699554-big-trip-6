@@ -3,14 +3,18 @@ import duration from 'dayjs/plugin/duration.js';
 
 dayjs.extend(duration);
 
+const RANDOM_INTEGER_OFFSET = 1;
+const FIRST_ARRAY_INDEX = 0;
+const DATE_COMPONENT_PAD_LENGTH = 2;
+
 function getRandomInteger(min, max) {
   const lower = Math.ceil(Math.min(min, max));
   const upper = Math.floor(Math.max(min, max));
-  return Math.floor(Math.random() * (upper - lower + 1) + lower);
+  return Math.floor(Math.random() * (upper - lower + RANDOM_INTEGER_OFFSET) + lower);
 }
 
 function getRandomArrayElement(items) {
-  return items[getRandomInteger(0, items.length - 1)];
+  return items[getRandomInteger(FIRST_ARRAY_INDEX, items.length - RANDOM_INTEGER_OFFSET)];
 }
 
 function generateId() {
@@ -44,14 +48,14 @@ function formatDuration(dateFrom, dateTo) {
   const minutes = durationObj.minutes();
 
   if (days > 0) {
-    return `${String(days).padStart(2, '0')}D ${String(hours).padStart(2, '0')}H ${String(minutes).padStart(2, '0')}M`;
+    return `${String(days).padStart(DATE_COMPONENT_PAD_LENGTH, '0')}D ${String(hours).padStart(DATE_COMPONENT_PAD_LENGTH, '0')}H ${String(minutes).padStart(DATE_COMPONENT_PAD_LENGTH, '0')}M`;
   }
 
   if (hours > 0) {
-    return `${String(hours).padStart(2, '0')}H ${String(minutes).padStart(2, '0')}M`;
+    return `${String(hours).padStart(DATE_COMPONENT_PAD_LENGTH, '0')}H ${String(minutes).padStart(DATE_COMPONENT_PAD_LENGTH, '0')}M`;
   }
 
-  return `${String(minutes).padStart(2, '0')}M`;
+  return `${String(minutes).padStart(DATE_COMPONENT_PAD_LENGTH, '0')}M`;
 }
 
 function capitalizeFirstLetter(string) {

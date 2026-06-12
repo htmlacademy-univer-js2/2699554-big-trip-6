@@ -36,23 +36,29 @@ export default class PointsModel extends Observable {
 
   async init() {
     try {
-      const [serverPoints, destinations, offers] = await Promise.all([
-        this.#apiService.getPoints(),
-        this.#apiService.getDestinations(),
-        this.#apiService.getOffers()
-      ]);
-
-      // Преобразуем точки из серверного формата в клиентский
+      const serverPoints = await this.#apiService.getPoints();
       this.#points = serverPoints.map(adaptPointFromServer);
-      this.#destinations = destinations;
-      this.#offers = offers;
-      this.#isLoading = false;
     } catch {
       this.#isLoading = false;
       this.#isError = true;
+      this._notify('INIT');
+      return;
     }
 
-    this._notify('INIT');
+    try {
+      const [destinations, offers] = await Promise.all([
+        this.#apiService.getDestinations(),
+        this.#apiService.getOffers(),
+      ]);
+
+      this.#destinations = destinations;
+      this.#offers = offers;
+    } catch {
+      this.#isError = true;
+    } finally {
+      this.#isLoading = false;
+      this._notify('INIT');
+    }
   }
 
   getDestinationById(id) {
