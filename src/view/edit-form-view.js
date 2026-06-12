@@ -395,7 +395,15 @@ export default class EditFormView extends AbstractStatefulView {
 
     const [day, month, yearShort, hours, minutes] = dateTimeStr.split(/[/\s:]/);
     const year = `20${yearShort}`;
-    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:00`;
+    const date = new Date(
+      Number(year),
+      Number(month) - 1,
+      Number(day),
+      Number(hours),
+      Number(minutes)
+    );
+
+    return date.toISOString();
   }
 
   #rollupClickHandler = (evt) => {
