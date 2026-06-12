@@ -61,6 +61,8 @@ export default class BoardPresenter {
   }
 
   #renderBoard() {
+    this.#clearBoard();
+
     // Состояния загрузки/ошибки
     if (this.#pointsModel.isLoading) {
       this.#renderLoadingMessage();
@@ -93,6 +95,33 @@ export default class BoardPresenter {
   #clearBoard() {
     this.#pointPresenters.forEach((presenter) => presenter.destroy());
     this.#pointPresenters.clear();
+
+    if (this.#sortComponent) {
+      remove(this.#sortComponent);
+      this.#sortComponent = null;
+    }
+
+    if (this.#filtersComponent) {
+      remove(this.#filtersComponent);
+      this.#filtersComponent = null;
+    }
+
+    if (this.#emptyComponent) {
+      remove(this.#emptyComponent);
+      this.#emptyComponent = null;
+    }
+
+    if (this.#loadingComponent) {
+      remove(this.#loadingComponent);
+      this.#loadingComponent = null;
+    }
+
+    if (this.#errorComponent) {
+      remove(this.#errorComponent);
+      this.#errorComponent = null;
+    }
+
+    remove(this.#listComponent);
     this.#closeCurrentEditForm();
   }
 
@@ -259,8 +288,22 @@ export default class BoardPresenter {
       this.#renderBoard();
     }
 
-    this.#closeCurrentEditForm();
+    this.#closeCurrentEditForm({ restoreEmptyList: false });
     this.#pointPresenters.forEach((presenter) => presenter.resetView());
+
+    this.#tripEventsElement.querySelectorAll('.trip-events__msg').forEach((messageElement) => {
+      messageElement.remove();
+    });
+
+    if (this.#emptyComponent) {
+      this.#emptyComponent.removeElement();
+      this.#emptyComponent = null;
+    }
+
+    if (!this.#tripEventsElement.querySelector('.trip-events__list')) {
+      this.#listComponent.removeElement();
+      render(this.#listComponent, this.#tripEventsElement);
+    }
 
     const allDestinations = this.#pointsModel.destinations;
     const defaultType = 'flight';
@@ -270,8 +313,8 @@ export default class BoardPresenter {
       id: null,
       type: defaultType,
       destination: null,
-      dateFrom: dayjs().toISOString(),
-      dateTo: dayjs().add(1, 'hour').toISOString(),
+      dateFrom: '',
+      dateTo: '',
       basePrice: 0,
       offers: [],
       isFavorite: false
@@ -307,22 +350,34 @@ export default class BoardPresenter {
       this.#newEventButton.disabled = false;
     } catch {
       if (this.#currentEditForm) {
-        this.#currentEditForm.shake();
+        this.#currentEditForm.shake(() => {
+          if (this.#currentEditForm) {
+            this.#currentEditForm.resetButtons();
+          }
+        });
       }
     } finally {
-      if (this.#currentEditForm) {
-        this.#currentEditForm.resetButtons(); // возвращаем "Save"/"Cancel"
-      }
       this.#uiBlocker.unblock();
     }
   };
 
-  #closeCurrentEditForm() {
+  #closeCurrentEditForm({ restoreEmptyList = true } = {}) {
     if (this.#currentEditForm) {
       remove(this.#currentEditForm);
       this.#currentEditForm = null;
     }
     document.removeEventListener('keydown', this.#escKeyDownHandler);
+
+    if (
+      restoreEmptyList
+      && this.#pointsModel.points.length === 0
+      && !this.#emptyComponent
+      && !this.#pointsModel.isLoading
+      && !this.#pointsModel.isError
+    ) {
+      remove(this.#listComponent);
+      this.#renderEmptyList();
+    }
   }
 
   #escKeyDownHandler = (evt) => {

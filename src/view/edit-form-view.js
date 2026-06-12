@@ -9,7 +9,8 @@ import 'flatpickr/dist/flatpickr.min.css';
 dayjs.extend(customParseFormat);
 
 const DATEPICKER_DATE_FORMAT = 'd/m/y H:i';
-const DATE_PARSE_FORMAT = 'D/M/YY H:mm';
+const DATE_DISPLAY_FORMAT = 'DD/MM/YY HH:mm';
+const DATE_PARSE_FORMAT = 'DD/MM/YY HH:mm';
 
 // ------------------- вспомогательные функции шаблонов -------------------
 function createTypeListTemplate(currentType, pointId) {
@@ -104,8 +105,7 @@ function createEditFormTemplate(point, destination, offers, allDestinations, isN
   const { id, type, dateFrom, dateTo, basePrice, offers: selectedOffers } = point;
   const pointId = id || 'new';
 
-  const startTime = dateFrom ? humanizeDate(dateFrom, 'd/m/y H:i') : '';
-  const endTime = dateTo ? humanizeDate(dateTo, 'd/m/y H:i') : '';
+  // Don't format dates here; flatpickr will set them via defaultDate option
   const destinationName = destination ? destination.name : '';
 
   const hasOffers = offers && offers.length > 0;
@@ -169,7 +169,6 @@ function createEditFormTemplate(point, destination, offers, allDestinations, isN
               id="event-start-time-${pointId}"
               type="text"
               name="event-start-time"
-              value="${startTime}"
             >
             &mdash;
             <label class="visually-hidden" for="event-end-time-${pointId}">To</label>
@@ -178,7 +177,6 @@ function createEditFormTemplate(point, destination, offers, allDestinations, isN
               id="event-end-time-${pointId}"
               type="text"
               name="event-end-time"
-              value="${endTime}"
             >
           </div>
 
@@ -199,7 +197,7 @@ function createEditFormTemplate(point, destination, offers, allDestinations, isN
           </div>
 
           <button class="event__save-btn btn btn--blue" type="submit" ${disabledAttr}>${saveButtonText}</button>
-          <button class="event__reset-btn" type="reset" ${disabledAttr}>${resetButtonText}</button>
+          <button class="event__reset-btn" type="reset">${resetButtonText}</button>
           ${!isNewPoint ? `
             <button class="event__rollup-btn" type="button">
               <span class="visually-hidden">Open event</span>
@@ -296,11 +294,13 @@ export default class EditFormView extends AbstractStatefulView {
   #initDatepickers() {
     const startTimeInput = this.element.querySelector('[name="event-start-time"]');
     const endTimeInput = this.element.querySelector('[name="event-end-time"]');
+    const { point } = this._state;
 
     if (startTimeInput) {
       this.#datepickerFrom = flatpickr(startTimeInput, {
         enableTime: true,
         dateFormat: DATEPICKER_DATE_FORMAT,
+        defaultDate: point.dateFrom || null,
         onChange: ([selectedDate]) => {
           if (this.#datepickerTo && selectedDate) {
             this.#datepickerTo.set('minDate', selectedDate);
@@ -313,6 +313,7 @@ export default class EditFormView extends AbstractStatefulView {
       this.#datepickerTo = flatpickr(endTimeInput, {
         enableTime: true,
         dateFormat: DATEPICKER_DATE_FORMAT,
+        defaultDate: point.dateTo || null,
       });
     }
   }
@@ -422,19 +423,27 @@ export default class EditFormView extends AbstractStatefulView {
   #typeChangeHandler = (evt) => {
     const newType = evt.target.value;
     const newOffers = this.#getOffersForType ? this.#getOffersForType(newType) : [];
-    this._state.point.type = newType;
-    this._state.offers = newOffers;
-    this._state.point.offers = [];
-    this.updateElement();
+    const priceInput = this.element.querySelector('.event__input--price');
+    const basePrice = priceInput ? parseInt(priceInput.value, 10) || 0 : this._state.point.basePrice;
+
+    this.updateElement({
+      point: {
+        ...this._state.point,
+        type: newType,
+        offers: [],
+        basePrice,
+      },
+      offers: newOffers,
+    });
   };
 
   #destinationChangeHandler = (evt) => {
     const destinationName = evt.target.value;
     const destination = this._state.allDestinations.find((d) => d.name === destinationName);
-    if (destination) {
-      this._state.destination = destination;
-    }
-    this.updateElement();
+
+    this.updateElement({
+      destination: destination || this._state.destination,
+    });
   };
 
   #destinationBlurHandler = (evt) => {
@@ -449,25 +458,29 @@ export default class EditFormView extends AbstractStatefulView {
   #priceInputHandler = (evt) => {
     const input = evt.target;
     input.value = input.value.replace(/[^0-9]/g, '');
+    this._state.point.basePrice = parseInt(input.value, 10) || 0;
   };
 
   // ---------- публичные методы для управления состоянием кнопок ----------
   setSaving() {
-    this._state.isSaving = true;
-    this._state.isDisabled = true;
-    this.updateElement();
+    this.updateElement({
+      isSaving: true,
+      isDisabled: true,
+    });
   }
 
   setDeleting() {
-    this._state.isDeleting = true;
-    this._state.isDisabled = true;
-    this.updateElement();
+    this.updateElement({
+      isDeleting: true,
+      isDisabled: true,
+    });
   }
 
   resetButtons() {
-    this._state.isSaving = false;
-    this._state.isDeleting = false;
-    this._state.isDisabled = false;
-    this.updateElement();
+    this.updateElement({
+      isSaving: false,
+      isDeleting: false,
+      isDisabled: false,
+    });
   }
 }
