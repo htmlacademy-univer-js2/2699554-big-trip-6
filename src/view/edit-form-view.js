@@ -1,6 +1,6 @@
 import AbstractStatefulView from '../framework/view/abstract-stateful-view.js';
 import { POINT_TYPES } from '../const.js';
-import { humanizeDate, capitalizeFirstLetter } from '../utils.js';
+import { capitalizeFirstLetter } from '../utils.js';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat.js';
 import flatpickr from 'flatpickr';
@@ -9,7 +9,6 @@ import 'flatpickr/dist/flatpickr.min.css';
 dayjs.extend(customParseFormat);
 
 const DATEPICKER_DATE_FORMAT = 'd/m/y H:i';
-const DATE_DISPLAY_FORMAT = 'DD/MM/YY HH:mm';
 const DATE_PARSE_FORMAT = 'DD/MM/YY HH:mm';
 
 // ------------------- вспомогательные функции шаблонов -------------------
@@ -102,7 +101,7 @@ function createDestinationTemplate(destination) {
 }
 
 function createEditFormTemplate(point, destination, offers, allDestinations, isNewPoint = false, state = {}) {
-  const { id, type, dateFrom, dateTo, basePrice, offers: selectedOffers } = point;
+  const { id, type, basePrice, offers: selectedOffers } = point;
   const pointId = id || 'new';
 
   // Don't format dates here; flatpickr will set them via defaultDate option
