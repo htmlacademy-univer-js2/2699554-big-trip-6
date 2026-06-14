@@ -9,6 +9,7 @@ import PointPresenter from './point-presenter.js';
 import TripInfoPresenter from './trip-info-presenter.js';
 import { render, replace, remove, RenderPosition } from '../framework/render.js';
 import { FilterType, SortType } from '../const.js';
+import { isEscapeKey } from '../utils.js';
 import dayjs from 'dayjs';
 import UiBlocker from '../framework/ui-blocker/ui-blocker.js';
 
@@ -200,13 +201,13 @@ export default class BoardPresenter {
           count = points.length;
           break;
         case FilterType.FUTURE:
-          count = points.filter((p) => this.#isPointFuture(p, now)).length;
+          count = points.filter((point) => this.#isPointFuture(point, now)).length;
           break;
         case FilterType.PRESENT:
-          count = points.filter((p) => this.#isPointPresent(p, now)).length;
+          count = points.filter((point) => this.#isPointPresent(point, now)).length;
           break;
         case FilterType.PAST:
-          count = points.filter((p) => this.#isPointPast(p, now)).length;
+          count = points.filter((point) => this.#isPointPast(point, now)).length;
           break;
       }
       return { type, count };
@@ -381,7 +382,7 @@ export default class BoardPresenter {
   }
 
   #escKeyDownHandler = (evt) => {
-    if (evt.key === 'Escape' || evt.key === 'Esc') {
+    if (isEscapeKey(evt)) {
       evt.preventDefault();
       this.#closeCurrentEditForm();
       if (this.#newEventButton) {
