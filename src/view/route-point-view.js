@@ -1,5 +1,6 @@
 import AbstractView from '../framework/view/abstract-view.js';
 import { humanizeDate, formatDuration, capitalizeFirstLetter } from '../utils.js';
+import he from 'he';
 
 function createOffersTemplate(offers) {
   if (!offers || offers.length === 0) {
@@ -8,7 +9,7 @@ function createOffersTemplate(offers) {
 
   return offers.map((offer) => `
     <li class="event__offer">
-      <span class="event__offer-title">${offer.title}</span>
+      <span class="event__offer-title">${he.encode(offer.title)}</span>
       &plus;&euro;&nbsp;
       <span class="event__offer-price">${offer.price}</span>
     </li>
@@ -26,7 +27,7 @@ function createRoutePointTemplate(point, destination, selectedOffers) {
   const endTimeAttribute = humanizeDate(dateTo, 'YYYY-MM-DDTHH:mm');
   const duration = formatDuration(dateFrom, dateTo);
   const favoriteClass = isFavorite ? 'event__favorite-btn--active' : '';
-  const destinationName = destination ? destination.name : '';
+  const destinationName = destination ? he.encode(destination.name) : '';
 
   return `
     <li class="trip-events__item">

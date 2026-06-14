@@ -92,6 +92,10 @@ export default class PointPresenter {
     this.#uiBlocker.block();
     try {
       await this.#pointsModel.updatePoint(updatedPoint);
+      // On success, replace form back to point view
+      if (this.#mode === Mode.EDITING) {
+        this.#replaceFormToPoint();
+      }
     } catch {
       this.#editFormComponent.shake(() => {
         this.#editFormComponent.resetButtons();

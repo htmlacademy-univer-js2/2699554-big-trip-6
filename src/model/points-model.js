@@ -35,10 +35,16 @@ export default class PointsModel extends Observable {
   }
 
   async init() {
+    this.#isLoading = true;
+    this.#isError = false;
+
     try {
       const serverPoints = await this.#apiService.getPoints();
       this.#points = serverPoints.map(adaptPointFromServer);
     } catch {
+      this.#points = [];
+      this.#destinations = [];
+      this.#offers = [];
       this.#isLoading = false;
       this.#isError = true;
       this._notify('INIT');
@@ -54,6 +60,8 @@ export default class PointsModel extends Observable {
       this.#destinations = destinations;
       this.#offers = offers;
     } catch {
+      this.#destinations = [];
+      this.#offers = [];
       this.#isError = true;
     } finally {
       this.#isLoading = false;

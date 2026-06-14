@@ -4,6 +4,7 @@ import { capitalizeFirstLetter } from '../utils.js';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat.js';
 import flatpickr from 'flatpickr';
+import he from 'he';
 import 'flatpickr/dist/flatpickr.min.css';
 
 dayjs.extend(customParseFormat);
@@ -32,7 +33,7 @@ function createTypeListTemplate(currentType, pointId) {
 
 function createDestinationListTemplate(destinations) {
   return destinations
-    .map((destination) => `<option value="${destination.name}"></option>`)
+    .map((destination) => `<option value="${he.encode(destination.name)}"></option>`)
     .join('');
 }
 
@@ -56,7 +57,7 @@ function createOffersTemplate(offers, selectedOffers, pointId) {
           data-offer-id="${offer.id}"
         >
         <label class="event__offer-label" for="event-offer-${offerSlug}-${pointId}">
-          <span class="event__offer-title">${offer.title}</span>
+          <span class="event__offer-title">${he.encode(offer.title)}</span>
           &plus;&euro;&nbsp;
           <span class="event__offer-price">${offer.price}</span>
         </label>
@@ -84,7 +85,7 @@ function createDestinationTemplate(destination) {
       <div class="event__photos-container">
         <div class="event__photos-tape">
           ${destination.pictures.map((picture) => `
-            <img class="event__photo" src="${picture.src}" alt="${picture.description}">
+            <img class="event__photo" src="${he.encode(picture.src)}" alt="${he.encode(picture.description)}">
           `).join('')}
         </div>
       </div>
@@ -94,7 +95,7 @@ function createDestinationTemplate(destination) {
   return `
     <section class="event__section event__section--destination">
       <h3 class="event__section-title event__section-title--destination">Destination</h3>
-      ${destination.description ? `<p class="event__destination-description">${destination.description}</p>` : ''}
+      ${destination.description ? `<p class="event__destination-description">${he.encode(destination.description)}</p>` : ''}
       ${photosTemplate}
     </section>
   `;
@@ -105,7 +106,7 @@ function createEditFormTemplate(point, destination, offers, allDestinations, isN
   const pointId = id || 'new';
 
   // Don't format dates here; flatpickr will set them via defaultDate option
-  const destinationName = destination ? destination.name : '';
+  const destinationName = destination ? he.encode(destination.name) : '';
 
   const hasOffers = offers && offers.length > 0;
   const hasDestination = destination && (destination.description || (destination.pictures && destination.pictures.length > 0));
@@ -349,6 +350,66 @@ export default class EditFormView extends AbstractStatefulView {
     if (priceInput) {
       priceInput.addEventListener('input', this.#priceInputHandler);
     }
+
+    const offerCheckboxes = this.element.querySelectorAll('.event__offer-checkbox');
+    offerCheckboxes.forEach((checkbox) => {
+      checkbox.addEventListener('change', this.#offerChangeHandler);
+    });
+  }
+
+  #getSelectedOfferIds() {
+    const selectedOfferIds = [];
+    this.element.querySelectorAll('.event__offer-checkbox:checked').forEach((checkbox) => {
+      const offerId = checkbox.dataset.offerId;
+      if (offerId) {
+        selectedOfferIds.push(offerId);
+      }
+    });
+    return selectedOfferIds;
+  }
+
+  #getDateFromPicker(datepicker) {
+    if (datepicker?.selectedDates?.length) {
+      return dayjs(datepicker.selectedDates[0]).toISOString();
+    }
+
+    const inputValue = datepicker?.input?.value;
+    return inputValue ? this.#parseDateTime(inputValue) : '';
+  }
+
+  #syncFormToState() {
+    const destinationInput = this.element.querySelector('.event__input--destination');
+    const priceInput = this.element.querySelector('.event__input--price');
+
+    let destination = this._state.destination;
+    if (destinationInput?.value) {
+      const foundDestination = this._state.allDestinations.find(
+        (destinationItem) => destinationItem.name === destinationInput.value
+      );
+      if (foundDestination) {
+        destination = foundDestination;
+      }
+    }
+
+    const basePrice = priceInput ? parseInt(priceInput.value, 10) || 0 : this._state.point.basePrice;
+    const dateFrom = this.#getDateFromPicker(this.#datepickerFrom) || this._state.point.dateFrom;
+    const dateTo = this.#getDateFromPicker(this.#datepickerTo) || this._state.point.dateTo;
+
+    return {
+      destination,
+      point: {
+        ...this._state.point,
+        dateFrom,
+        dateTo,
+        basePrice,
+        offers: this.#getSelectedOfferIds(),
+      },
+    };
+  }
+
+  #shakeElement(element) {
+    element?.classList.add('shake');
+    setTimeout(() => element?.classList.remove('shake'), 600);
   }
 
   // ------------------- обработчики -------------------
@@ -360,11 +421,9 @@ export default class EditFormView extends AbstractStatefulView {
     const type = formData.get('event-type');
     const destinationName = formData.get('event-destination');
 
-    const destination = this._state.allDestinations.find((d) => d.name === destinationName);
+    const destination = this._state.allDestinations.find((destinationItem) => destinationItem.name === destinationName);
     if (!destination) {
-      const destinationInput = this.element.querySelector('.event__input--destination');
-      destinationInput?.classList.add('shake');
-      setTimeout(() => destinationInput?.classList.remove('shake'), 600);
+      this.#shakeElement(this.element.querySelector('.event__input--destination'));
       return;
     }
 
@@ -372,13 +431,12 @@ export default class EditFormView extends AbstractStatefulView {
     const endTimeStr = formData.get('event-end-time');
     const price = parseInt(formData.get('event-price'), 10);
 
-    const selectedOfferIds = [];
-    this.element.querySelectorAll('.event__offer-checkbox:checked').forEach((checkbox) => {
-      const offerId = checkbox.dataset.offerId;
-      if (offerId) {
-        selectedOfferIds.push(offerId);
-      }
-    });
+    if (!price || Number.isNaN(price)) {
+      this.#shakeElement(this.element.querySelector('.event__input--price'));
+      return;
+    }
+
+    const selectedOfferIds = this.#getSelectedOfferIds();
 
     const updatedPoint = {
       id: this._state.point.id,
@@ -386,7 +444,7 @@ export default class EditFormView extends AbstractStatefulView {
       destination: destination.id,
       dateFrom: this.#parseDateTime(startTimeStr),
       dateTo: this.#parseDateTime(endTimeStr),
-      basePrice: isNaN(price) ? 0 : price,
+      basePrice: price,
       offers: selectedOfferIds,
       isFavorite: this._state.point.isFavorite
     };
@@ -422,15 +480,14 @@ export default class EditFormView extends AbstractStatefulView {
   #typeChangeHandler = (evt) => {
     const newType = evt.target.value;
     const newOffers = this.#getOffersForType ? this.#getOffersForType(newType) : [];
-    const priceInput = this.element.querySelector('.event__input--price');
-    const basePrice = priceInput ? parseInt(priceInput.value, 10) || 0 : this._state.point.basePrice;
+    const syncedState = this.#syncFormToState();
 
     this.updateElement({
+      ...syncedState,
       point: {
-        ...this._state.point,
+        ...syncedState.point,
         type: newType,
         offers: [],
-        basePrice,
       },
       offers: newOffers,
     });
@@ -438,20 +495,48 @@ export default class EditFormView extends AbstractStatefulView {
 
   #destinationChangeHandler = (evt) => {
     const destinationName = evt.target.value;
-    const destination = this._state.allDestinations.find((d) => d.name === destinationName);
+    const destination = this._state.allDestinations.find((destinationItem) => destinationItem.name === destinationName);
+
+    if (!destination || destination.id === this._state.destination?.id) {
+      return;
+    }
+
+    const syncedState = this.#syncFormToState();
 
     this.updateElement({
-      destination: destination || this._state.destination,
+      ...syncedState,
+      destination,
     });
   };
 
   #destinationBlurHandler = (evt) => {
     const input = evt.target;
     const destinationName = input.value;
-    const exists = this._state.allDestinations.some((d) => d.name === destinationName);
+    const exists = this._state.allDestinations.some((destinationItem) => destinationItem.name === destinationName);
     if (!exists) {
       input.value = this._state.destination ? this._state.destination.name : '';
     }
+  };
+
+  #offerChangeHandler = (evt) => {
+    const offerId = evt.target.dataset.offerId;
+    if (!offerId) {
+      return;
+    }
+
+    const currentOffers = [...this._state.point.offers];
+    if (evt.target.checked) {
+      if (!currentOffers.includes(offerId)) {
+        currentOffers.push(offerId);
+      }
+    } else {
+      const offerIndex = currentOffers.indexOf(offerId);
+      if (offerIndex !== -1) {
+        currentOffers.splice(offerIndex, 1);
+      }
+    }
+
+    this._state.point.offers = currentOffers;
   };
 
   #priceInputHandler = (evt) => {
@@ -462,14 +547,20 @@ export default class EditFormView extends AbstractStatefulView {
 
   // ---------- публичные методы для управления состоянием кнопок ----------
   setSaving() {
+    const syncedState = this.#syncFormToState();
+
     this.updateElement({
+      ...syncedState,
       isSaving: true,
       isDisabled: true,
     });
   }
 
   setDeleting() {
+    const syncedState = this.#syncFormToState();
+
     this.updateElement({
+      ...syncedState,
       isDeleting: true,
       isDisabled: true,
     });
